@@ -1,0 +1,26 @@
+#-----------------------------------------------------------------------#
+# LISTA DE TAREAS PENDIENTES DEL SOFTWARE DE OBSERVACIONES SINTÉTICAS   #
+#                                                                       #
+# by Marcial Becerril Tapia                                             #
+# 09 - dic - 2020                                                       #
+# Glossary                                                              #
+# FB. Fix Bug                                                           #
+#-----------------------------------------------------------------------#
+
+1. [Done] Definir anchos de línea constantes.
+2. Documentación del programa
+   a. [Done. 26/03/2021] Documentación modo espectral 
+   b. Documentación modo MC
+   c. Notebooks en Jupyter actualizados
+3. Desarrollo de malla por curvas de nivel
+4. Herramientas para el manejo de directorios/archivos
+5. Herramientas de graficación de polarización
+6. [Done. 19/04/2021]Lectura de archivos .csv y utilizar la herramienta de ajuste auto/manual
+7. Manejo de archivos
+8. [Done. 25/01/2021]FB. Los ajustes gaussianos incluyen amplitudes negativas, corregir esto 
+9. [Done. 19/04/2021]Sustracción línea base: polinomios/bls agorithm
+10. [Done. 19/04/2021]Indicar método de cálculo de volumen al cargar nube molecular
+11. [Done]Insertar módulo de unidades
+
+12. [Done]Agregar etiqueta a las ventanas interactivas de linea base y ajuste de línea con el nombre del espectro
+13. [Done. 23/04/2021] Herramientas de graficación de los espectros con las líneas ajustadas en specs.py

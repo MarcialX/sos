@@ -1,0 +1,77 @@
+TaurusOldMC: {
+  12CO: ./data_cube/filament_12co_YZ_Jansky-per-px_old.fits,
+  13CO: ./data_cube/filament_13co_YZ_Jansky-per-px_old.fits,
+  C18O: ./data_cube/filament_c18o_YZ_Jansky-per-px_old.fits,
+  Re_factor: 3.3,
+  ang_dia: 1.6667,
+  dist: 140.0,
+  temp_factor: 2.9647e-14,
+  width_factor: 1.9,
+  x0: 0.0, 
+  y0: 0.0,
+  stokes: ./data_cube/polaris_detector_nr0003.fits}
+
+TaurusMC: {
+  12CO: ./data_cube/filament_12co_YZ_Jansky-per-px.fits,
+  13CO: ./data_cube/filament_13co_YZ_Jansky-per-px.fits,
+  C18O: ./data_cube/filament_c18o_YZ_Jansky-per-px.fits,
+  Re_factor: 3.3,
+  ang_dia: 1.6667,
+  dist: 140.0,
+  temp_factor: 0.6243,
+  width_factor: 1.9,
+  x0: 0.0, 
+  y0: 0.0,
+  stokes: ./data_cube/new_polaris_detector_nr0003.fits}
+
+MC76: {
+  12CO: ./data_cube/cld76_FOREST_12CO.fits,
+  13CO: ./data_cube/cld76_FOREST_13CO.fits,
+  C18O: ./data_cube/cld76_FOREST_C18O.fits,
+  Re_factor: 1.0,
+  ang_dia: 0.234,
+  dist: 2500.0,
+  temp_factor: 1.0,
+  width_factor: 1.0,
+  x0: 19.3738, 
+  y0: 0.0,
+  stokes: ./data_cube/IQU_MC76.fits}
+
+3Orion: {
+  12CO: ./data_cube/3Orion.CO1221.Osaka.beam204.cube.fits,
+  13CO: ./data_cube/3Orion.CO1321.Osaka.beam204.cube.fits,
+  C18O: ,
+  Re_factor: 1.0,
+  ang_dia: 1.6667,
+  dist: 140.0,
+  temp_factor: 1.0,
+  width_factor: 1.0,
+  x0: 205.28333, 
+  y0: -14.23333,
+  stokes: }
+
+dummyMC: {
+  12CO: '',
+  13CO: '',
+  C18O: '',
+  stokes: '',
+  Re_factor: 1.0,
+  ang_dia: 1.0,
+  dist: 10.0,
+  temp_factor: 5.0,
+  x0: 0.0, 
+  y0: 0.0,
+  width_factor: 1.0}
+
+zeroMC: {
+  12CO: '',
+  13CO: '',
+  C18O: '',
+  stokes: '',
+  Re_factor: 1.0,
+  ang_dia: 1.0,
+  dist: 1.0,
+  temp_factor: 1.0,
+  x0: 0.0, 
+  y0: 0.0,
+  width_factor: 1.0}

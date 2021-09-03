@@ -1,0 +1,6 @@
+data_cube/
+data_specs/
+img_results/
+
+*.fits
+*.txt
