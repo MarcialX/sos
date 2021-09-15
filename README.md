@@ -13,7 +13,7 @@ It includes:
 - Display moment zero maps
 - Display binning maps of: mass, column density and line profiles
 - Display molecular lines
-- Data base of the observed molecular clouds parameters (so far only TaurusMC)
+- Data base of the observed molecular clouds parameters
 
 ## Requirements 📋
 
@@ -56,6 +56,8 @@ Now, create the molecular cloud object (mc), using their ID name (eg 'TaurusMC')
 ```python
 mc = sos.mc('TaurusMC')
 ```
+This ID has to be defined in ./data/mc_db.yaml.
+
 To display all the ID molecular clouds of the database:
 
 ```python
@@ -69,11 +71,11 @@ Then, create the integrated velocity of the whole map for all the molecular line
 mc.get_map_vels()
 ```
 
-Fit the line for the molecules
+Fit the line for the molecules, forcing only one line profile per spectra:
 
 ```python
-mc.line_fit('13CO')
-mc.line_fit('12CO')
+mc.line_fit('13CO', forced_lines=1)
+mc.line_fit('12CO', forced_lines=1)
 ```
 Both molecules are needed in order to get most of the physical propierties
 
@@ -94,14 +96,17 @@ mc.summary()
 Divide the molecule map into nbins 
 
 ```python
-mc.binning_mol('13CO', nbins=16)
+mc.binning_mol('13CO', nbins=16, rebin=True)
 mc.binning_mol('12CO', 16)
 ```
 
-Fit the line for each bin
+Every time that you define a new segmentation, you need to activate rebin as True. The rest of the plots dont needed (rebin = False by default).
+
+Fit the line for each bin. Again, for each bin spectra, we adjust only one line (forced_lines=1)
 
 ```python
-mc.line_fit_binning()
+mc.line_fit_binning('13CO', forced_lines=1)
+mc.line_fit_binning('12CO', forced_lines=1)
 ```
 
 Calculate the physical parameters for each bin as:
@@ -112,28 +117,41 @@ mc.get_bins_params()
 
 #### Plot the binned resuls
 
-First create the plotter object
+Import the matplotlib package
+
+```python
+from matplotlib.pyplot import *
+```
+
+First, we create the momentum zero map
 
 ```python
 # Get the binned data results
-mc_bins = mc.mc_binning
-
-# Get the M0 map of one molecule
-m0_data, m0_header = mc.M0('13CO', save=False)
-
-# Create plotter object
-plt = sos.mc_plotter(mc_bins, m0_data, m0_header)
+m0_13co = mc.get_n_moment('13CO', n=0)
 ```
 
-Plot the lines over the M0 map, defining the molecule line
+Then, we plot the momentum zero with the spectra of each bin overlaped
 
 ```python
-plt.plot_m0_line('13CO')
+# Get the M0 map of one molecule
+sos.plot_moment_spectra(m0_13co, mc.extract_param_from_binned('13CO'), label=True)
+```
+and the mass spatial distribution (according to the LTE approximation)
+
+```python
+# Create plotter object
+sos.map_param(mc.binned, 'mass_lte', m0_13co, cmap='RdBu_r', log=False)
+```
+
+Finally, to show the graphs
+
+```python
+show()
 ```
 
 ### Or...
 
-Run the example.py file, which contains the code lines above:
+Run the example.py file, which contains the code lines above plus the magnetic field computation:
 
 ```python
 import sos
