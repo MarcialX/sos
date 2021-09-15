@@ -17,11 +17,15 @@
 import os
 import numpy as np
 
+from matplotlib.pyplot import *
+
 from astropy import wcs
 from astropy.io import fits
 from astropy.coordinates import SkyCoord
 
+#import sos
 from .misc.print_msg import *
+from .fits_funcs.header_edit import *
 
 
 def load_fits(path):
@@ -179,7 +183,19 @@ def trim_data_cube(path, center, dims, **kwargs):
 
 
 def save_img(data, header, **kwargs):
-
+    """
+        Save FITS image
+        Parameters
+        ----------
+        data : np.array
+            Data array
+        header : header object
+            Data header
+        **kwargs:
+            name : str
+                Name for the FITS image
+        ----------
+    """
 
     # Key arguments
     # ----------------------------------------------
@@ -193,6 +209,39 @@ def save_img(data, header, **kwargs):
     # Replace file if it already exist
     os.system('rm -rf '+name+'.fits')
     hdu.writeto(name+'.fits')
+
+
+def edit_header(path):
+    """
+        Interactive window to edit the header of a FITS file
+        Parameters
+        ----------
+        path : string
+            Path of the FITS which header will be edited
+        ----------
+    """
+
+    # Read the FITS file
+    data, header = load_fits(path)
+
+    # Get FITS name
+    name = path.split('/')[-1]
+
+    # Add canvas to the app
+    ioff()
+    fig, ax = subplots()
+    close(fig)
+
+    # Instance app
+    app = QApplication.instance()
+
+    header_window = HeaderEditWindow()
+    header_window.load_fits_file(data, header, name)
+    # Signal connection to save data
+    #header_window.save.connect()
+    header_window.show()
+
+    app.exec_()
 
 
 

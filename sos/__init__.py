@@ -24,7 +24,6 @@ def help():
     """
     )
 
-from .misc import *
 
 from .misc.print_msg import *
 #from .misc.units_tool import *
@@ -36,6 +35,7 @@ from .misc.constants import *
 from .init_vals import *
 from .misc.units_tool import *
 from .specs import *
+from .img_tools import *
 
 
 DB_PATH = './sos/data/mc_db.yaml'

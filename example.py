@@ -37,8 +37,8 @@ mc.get_gral_params()
 # BINNING THE MAP
 # ===============
 # Binning the map of molecule '13CO' and '12CO', dividing the map in 32x32 bins
-mc.binning_mol('13CO', nbins=32, rebin=True)
-mc.binning_mol('12CO', 32)
+mc.binning_mol('13CO', nbins=41, rebin=True)
+mc.binning_mol('12CO', 41)
 # Fit the line of each bin
 mc.line_fit_binning('13CO', forced_lines=1)
 mc.line_fit_binning('12CO', forced_lines=1)

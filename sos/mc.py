@@ -4,7 +4,7 @@
 # Molecular cloud data
 #
 # Marcial Becerril, @ 24 August 2020
-# Latest Revision: 24 Aug 2020, 19:00 GMT-6
+# Latest Revision: 15 Sep 2021, 01:00 GMT-6
 #
 # For all kind of problems, requests of enhancements and bug reports, please
 # write to me at:
@@ -36,7 +36,6 @@ from .mc_db_tools import *
 from .line_fitting import *
 from .init_vals import *
 from .misc.constants import *
-from .img_tools import *
 
 
 class mc(object):
@@ -129,8 +128,10 @@ class mc(object):
 
         # Header and Data of spectroscopy data
         self.Dmol, self.Hmol = {}, {}
+        self.noise, self.noise_stat = {}, {}
         for mol in self.mols:
             self.Dmol[mol], self.Hmol[mol] = [], {}
+            self.noise[mol], self.noise_stat[mol] = {}, {}
         # Header and Data of polarization data
         self.Dpol, self.Hpol = [], {}
 
@@ -173,6 +174,7 @@ class mc(object):
         # Initiate the binned dictionary
         self.binned = {}
         self.binned['B0'] = {}
+        self.binned['B0']['flag'] = False
 
         # Boundaries for each bin
         self.bin_grid = np.array([])
@@ -218,11 +220,27 @@ class mc(object):
             ----------
         """
         # Get dimensions
-        x = self.Hmol[self.mols[0]]['NAXIS1'] 
-        y = self.Hmol[self.mols[0]]['NAXIS2']
+        flag_dims = True
+        aux = 0
+        for i, mol in enumerate(self.mols):
+            xp = self.Hmol[mol]['NAXIS1']
+            yp = self.Hmol[mol]['NAXIS2']
+            if (xp == aux and yp == aux) or i == 0:
+                aux = xp
+            else:
+                flag_dims = False
+                break
+
+        if flag_dims:
+            x = self.Hmol[self.mols[0]]['NAXIS1'] 
+            y = self.Hmol[self.mols[0]]['NAXIS2']
+        else:
+            msg('Images have not the same spatial size', 'fail')
+            return
 
         # Define volume array
         Vs = np.zeros((x, y))
+
         # Define dimensions of each pixel
         delta_lon = np.abs(np.mean(np.diff(self.lon_m)))
         delta_lat = np.abs(np.mean(np.diff(self.lat_m)))
@@ -846,9 +864,16 @@ class mc(object):
         xlim, ylim = x/nbins, y/nbins
 
         # Check if the rebinning is possible
-        if xlim < 1.5 or ylim < 1.5:
-            msg('Binning limit exceeded.\nMax binning is at least 1.5 pixels per bin',\
+        if xlim < 1.0 or ylim < 1.0:
+            msg('Binning limit exceeded.\nMax binning is at least 1 pixel per bin',\
             'fail')
+            return
+
+        if (xlim > 1 and xlim < 2) or (ylim > 1 and ylim < 2):
+            msg('Binning number not valid. It will create bins of zero dimension.',\
+            'fail')
+            max_bin = np.max((x, y))
+            msg('Choose a bin number between 2-'+str(round(max_bin/2))+' or the maximum binning: '+str(max_bin), 'info')
             return
 
         # Rebinning
@@ -891,6 +916,7 @@ class mc(object):
                 if not name in self.binned:
                     if rebin:
                         self.binned[name] = {}
+                        self.binned[name]['flag'] = False
                         msg('Bin '+str(cnt)+' created', 'ok')
                     else:
                         msg('Bin '+name+' does not exist. Rebinning needed', 'warn')
@@ -1200,7 +1226,7 @@ class mc(object):
         map_vel = np.zeros(v)
         # Get the velocity profile
         for i in range(v):
-            map_vel[i] = np.abs(cdelt[1]*cdelt[0])*(np.nansum(data[i, :, :])+frame[i])
+            map_vel[i] = np.abs(cdelt[1]*cdelt[0])*(np.nansum([np.nansum(data[i, :, :]),frame[i]]))
 
         return map_vel
 
@@ -1217,6 +1243,73 @@ class mc(object):
             self.baseline[mol] = np.zeros_like(self.full[mol]['line'])
 
         msg('Done', 'ok')
+
+
+    def get_noise(self, mol, channels=[0,-1], margins=None, *args, **kwargs):
+        """
+            Get the background noise
+        """
+
+        # Key arguments
+        # ----------------------------------------------
+        # Verbose
+        verbose = kwargs.pop('verbose', False)
+        # ----------------------------------------------
+
+        # Number of channels
+        nchns, xdim, ydim = self.Dmol[mol].shape
+        # Noise vector
+        noise = np.nan*np.zeros(nchns)
+        # Get cdelt
+        cdelt = self.Hmol[mol]['CDELT*']
+        # Get noise data from vector
+        if isinstance(channels, list) or isinstance(channels, np.ndarray):
+            if len(channels) > 0:
+                for chn in channels:
+                    if chn < nchns:
+                        noise[chn] = np.nansum(self.Dmol[mol][chn, :, :])
+                    else:
+                        msg('Channel '+str(chn)+' does not exist', 'warn')
+
+        # Get noise from margins
+        if isinstance(margins, tuple):
+            if len(margins) == 2:
+                # Get limits in pixels
+                xmin = int(margins[0][0]*xdim)
+                xmax = int(margins[0][1]*xdim)
+
+                ymin = int(margins[1][0]*ydim)
+                ymax = int(margins[1][1]*ydim)
+
+                # Get data for each margi
+                for chn in range(nchns):
+                    if not chn in channels:
+                        lmargin = self.Dmol[mol][chn][:ymin].flatten()
+                        rmargin = self.Dmol[mol][chn][ymax:].flatten()
+                        
+                        tmargin = self.Dmol[mol][chn][ymin:ymax,:xmin].flatten()
+                        bmargin = self.Dmol[mol][chn][ymin:ymax,xmax:].flatten()
+
+                        noise_frame = np.concatenate((lmargin, rmargin, tmargin, bmargin))
+                        k = (xdim*ydim)/len(noise_frame)
+                        noise[chn] = np.nansum(noise_frame)*k
+
+        # Clean from nan arrays
+        noise = np.abs(cdelt[1]*cdelt[0])*noise
+        self.noise[mol] = noise
+
+        # Noise statistics
+        self.noise_stat[mol] = {
+                'mean':np.nanmean(noise),
+                'std':np.nanstd(noise),
+                'median':np.nanmedian(noise)
+        }
+
+        if verbose:
+            print('========== MAP STATISTICS ==========')
+            print('Mean noise map: ', self.noise_stat[mol]['mean'])
+            print('Standard deviation map: ', self.noise_stat[mol]['std'])
+            print('Median map: ', self.noise_stat[mol]['median'])
 
 
     def substract_baseline(self, mol, inter=False, **kwargs):
@@ -1461,8 +1554,22 @@ class mc(object):
         # This forced flag has higher hierachy than the forced lines
         forced_thin = kwargs.pop('forced_thin', False)
         # Force n lines
-        forced_lines = kwargs.pop('forced_lines', 0)
-        forced_lines = int(forced_lines)
+        forced_lines = kwargs.pop('forced_lines', None)
+        if not forced_lines is None:
+            forced_lines = int(forced_lines)
+            if forced_lines < 0:
+                forced_lines = 0
+    
+        # Flag lines
+        flag_maps = kwargs.pop('flag_maps', True)
+        if flag_maps:
+            if len(self.noise[mol]) < 2:
+                msg('Not enough noise data selected', 'warn')
+                flag_maps = False
+
+        # Sigma threshold
+        sigma_thresh = kwargs.pop('sigma_thresh', 3)
+
         # verbose
         verbose = kwargs.pop('verbose', False)
 
@@ -1474,25 +1581,48 @@ class mc(object):
             # Spectra without baseline
             spectra = self.full[mol]['line'] - self.baseline[mol]
 
-            # Forced the same number of lines than the thin molecule
-            if forced_thin:
-                forced_lines = 0
-                if 'A' in self.full[self.thin].keys():
-                    forced_lines = len(self.full[self.thin]['A'])
+            # Check if the map is not noise
+            proceed = False
+            if flag_maps:
+                mean_noise = self.noise_stat[mol]['mean']
+                std_noise = self.noise_stat[mol]['std']
+                line_thresh = mean_noise+sigma_thresh*std_noise
+                
+                above_thresh_points = np.where(np.abs(spectra) > line_thresh)[0]
 
-            # If the number of lines are forced
-            if forced_lines == 0:
-                # Find peaks and get an guess estimation
-                peaks = find_profile_peaks(spectra, **kwargs)
+                if len(above_thresh_points) > 0:
+                    # Detect spikes
+                    diff_above_thresh = np.diff(above_thresh_points)
+                    next_above_points = np.where(diff_above_thresh == 1)[0]
+                    if len(next_above_points) > 0:
+                        proceed = True
             else:
-                # If forced lines is actived
-                if forced_lines == 1:
-                    peaks = [np.argmax(spectra)]
+                proceed = True
+
+            if proceed:
+                # Forced the same number of lines than the thin molecule
+                if forced_thin:
+                    #forced_lines = 0
+                    if 'A' in self.full[self.thin].keys():
+                        forced_lines = len(self.full[self.thin]['A'])
+
+                # If the number of lines are forced
+                if forced_lines is None:
+                    # Find peaks and get an guess estimation
+                    peaks = find_profile_peaks(spectra, **kwargs)
                 else:
-                    item_spectra = np.arange(len(spectra))
-                    ndiv = int(np.ceil(len(spectra)/(2+forced_lines)))
-                    peaks_raw = item_spectra[::ndiv]
-                    peaks = peaks_raw[1:-1]
+                    # If forced lines is actived
+                    if forced_lines == 0:
+                        peaks = []
+                    elif forced_lines == 1:
+                        peaks = [np.argmax(spectra)]
+                    else:
+                        item_spectra = np.arange(len(spectra))
+                        ndiv = int(np.ceil(len(spectra)/(2+forced_lines)))
+                        peaks_raw = item_spectra[::ndiv]
+                        peaks = peaks_raw[1:-1]
+            else:
+                peaks = []
            
             if len(peaks) > 0:
                 # Verbose for peaks
@@ -2024,9 +2154,16 @@ class mc(object):
         xlim, ylim = x/nbins, y/nbins
 
         # Check if the rebinning is possible
-        if xlim < 1.5 or ylim < 1.5:
-            msg('Binning limit exceeded.\nMax binning is at least 1.5 pixels per bin',\
+        if xlim < 1.0 or ylim < 1.0:
+            msg('Binning limit exceeded.\nMax binning is at least 1 pixel per bin',\
             'fail')
+            return
+
+        if (xlim > 1 and xlim < 2) or (ylim > 1 and ylim < 2):
+            msg('Binning number not valid. It will create bins of zero dimension.',\
+            'fail')
+            max_bin = np.max((x, y))
+            msg('Choose a bin number between 2-'+str(round(max_bin/2))+' or the maximum binning: '+str(max_bin), 'info')
             return
 
         msg('Starting binning for molecule '+mol, 'info')
@@ -2068,6 +2205,9 @@ class mc(object):
                         flag_binning = False
 
                 if flag_binning:
+                    # Start binning flagging
+                    self.binned[name]['flag'] = False
+
                     # Define bin coordinates
                     self.binned[name]['pos'] = [i, j]
 
@@ -2171,7 +2311,7 @@ class mc(object):
         # Check if there is data no nan available
         img_opt_thin_no_nan = img_opt_thin[~np.isnan(img_opt_thin)]
 
-        if len(img_opt_thin_no_nan):
+        if len(img_opt_thin_no_nan) > 0:
             flat_max_idx = np.nanargmax(img_opt_thin)
            
             xpos, ypos = int(flat_max_idx/ncols), flat_max_idx%ncols
@@ -2233,8 +2373,22 @@ class mc(object):
         # This forced flag has higher hierachy than the forced lines
         forced_thin = kwargs.pop('forced_thin', False)
         # Force n lines
-        forced_lines = kwargs.pop('forced_lines', 0)
-        forced_lines = int(forced_lines)
+        forced_lines = kwargs.pop('forced_lines', None)
+        if not forced_lines is None:
+            forced_lines = int(forced_lines)
+            if forced_lines < 0:
+                forced_lines = 0
+
+        # Flag lines
+        flag_maps = kwargs.pop('flag_maps', True)
+        if flag_maps:
+            if len(self.noise[mol]) < 2:
+                msg('Not enough noise data selected', 'warn')
+                flag_maps = False
+
+        # Sigma threshold
+        sigma_thresh = kwargs.pop('sigma_thresh', 1)
+
         # Verbose
         verbose = kwargs.pop('verbose', False)
 
@@ -2244,6 +2398,13 @@ class mc(object):
                 names = [nbin]
             else:
                 names = self.binned.keys()
+
+            # Get noise constrains
+            if flag_maps:
+                tot_bins = np.sqrt(len(names))
+                mean_noise = self.noise_stat[mol]['mean']/tot_bins
+                std_noise = self.noise_stat[mol]['std']/tot_bins
+                line_thresh = mean_noise+sigma_thresh*std_noise
 
             for name in names:
                 if len(self.binned[name][mol]['line']) == 0:
@@ -2256,24 +2417,47 @@ class mc(object):
                 else:
                     spectra = self.binned[name][mol]['line']
 
-                # Forced the same number of lines than the thin molecule
-                if forced_thin:
-                    forced_lines = 0
-                    if 'A' in self.binned[name][self.thin].keys():
-                        forced_lines = len(self.binned[name][self.thin]['A'])
-
-                # If the number of lines are forced
-                if forced_lines == 0:
-                    # Find peaks and get an guess estimation
-                    peaks = find_profile_peaks(spectra, **kwargs)
+                # Check if the map is not noise
+                proceed = False
+                if flag_maps:
+                    above_thresh_points = np.where(np.abs(spectra) > line_thresh)[0]
+                    if len(above_thresh_points) > 0:
+                        # Detect spikes
+                        diff_above_thresh = np.diff(above_thresh_points)
+                        next_above_points = np.where(diff_above_thresh == 1)[0]
+                        if len(next_above_points) > 0:
+                            proceed = True
                 else:
-                    if forced_lines == 1:
-                        peaks = [np.argmax(spectra)]
+                    proceed = True
+
+                if proceed:
+                    if flag_maps:
+                        self.binned[name]['flag'] = False
                     else:
-                        item_spectra = np.arange(len(spectra))
-                        ndiv = int(np.ceil(len(spectra)/(2+forced_lines)))
-                        peaks_raw = item_spectra[::ndiv]
-                        peaks = peaks_raw[1:-1]
+                        self.binned[name]['flag'] = self.binned[name]['flag'] or False 
+                    # Forced the same number of lines than the thin molecule
+                    if forced_thin:
+                        #forced_lines = 0
+                        if 'A' in self.binned[name][self.thin].keys():
+                            forced_lines = len(self.binned[name][self.thin]['A'])
+
+                    # If the number of lines are forced
+                    if forced_lines is None:
+                        # Find peaks and get an guess estimation
+                        peaks = find_profile_peaks(spectra, **kwargs)
+                    else:
+                        if forced_lines == 0:
+                            peaks = []
+                        elif forced_lines == 1:
+                            peaks = [np.argmax(spectra)]
+                        else:
+                            item_spectra = np.arange(len(spectra))
+                            ndiv = int(np.ceil(len(spectra)/(2+forced_lines)))
+                            peaks_raw = item_spectra[::ndiv]
+                            peaks = peaks_raw[1:-1]
+                else:
+                    self.binned[name]['flag'] = self.binned[name]['flag'] or True
+                    peaks = []
                            
                 if len(peaks) > 0:
                     # Verbose for peaks
@@ -2286,7 +2470,7 @@ class mc(object):
                 else:
                     pcov = []
                     A, mu, sigma, fwhm = [], [], [], []
-                    msg('No lines found', 'warn')
+                    msg('No lines found in '+name, 'warn')
 
                 # Sort parameters through the mu position
                 mu_sort = np.argsort(mu)
@@ -2451,6 +2635,7 @@ class mc(object):
                 xmax = int(x2)
                 ymin = int(np.ceil(y1))
                 ymax = int(y2)
+
                 lims = ((xmin,xmax),(ymin,ymax))
                 # Extract fractional data
                 if (x%nbins > 0) or (y%nbins > 0):
@@ -2474,7 +2659,7 @@ class mc(object):
                     bin_frames.append(frames_pts)
 
                 # Defining the sub-region
-                bin_data = data[:, ymin:ymax, xmin:xmax]              
+                bin_data = data[:, ymin:ymax, xmin:xmax]            
                 # Get the integrated velocity
                 vel_bin[i][j][:] = self.map_vel(v, bin_data, cdelt, frame=add_data_pix)
                 
@@ -2606,9 +2791,13 @@ class mc(object):
         # Key arguments
         # ----------------------------------------------
         # Sigma of Gaussian filter to get the lines temperatures from maps
-        sigma_filter = kwargs.pop('sigma_filter', 0.5)
+        sigma_filter = kwargs.pop('sigma_filter', 1)
+        # No gaussian filter applied
+        no_filter = kwargs.pop('no_filter', False)
         # Temperature threshold to be considered as a valid line
-        thresh = kwargs.pop('thresh', 3)
+        #thresh = kwargs.pop('thresh', 3)
+        # Flag lines
+        flag_maps = kwargs.pop('flag_maps', True)
         # Define virial molecule
         mol_vir = kwargs.pop('mol_vir', 'thin')
         # Method to get radiation temperature
@@ -2649,10 +2838,17 @@ class mc(object):
         filter_data_thick = np.zeros_like(self.Dmol[self.thick])
 
         for s in range(slices):
-            filter_data_thin[s] = gaussian_filter(self.Dmol[self.thin][s], sigma=sigma_filter)
-            filter_data_thick[s] = gaussian_filter(self.Dmol[self.thick][s], sigma=sigma_filter)
+            if no_filter:
+                filter_data_thin[s] = self.Dmol[self.thin][s]
+                filter_data_thick[s] =self.Dmol[self.thick][s]
+            else:   
+                filter_data_thin[s] = gaussian_filter(self.Dmol[self.thin][s], sigma=sigma_filter)
+                filter_data_thick[s] = gaussian_filter(self.Dmol[self.thick][s], sigma=sigma_filter)
 
         for name in self.binned.keys():
+            # Check if bin is not flagged
+            if self.binned[name]['flag']:
+                msg('Flagged bin '+name, 'info')
             # Flag to calculate params
             flag_get_params = True
             # If there is a line for the 'name' bin
@@ -2789,90 +2985,93 @@ class mc(object):
 
                             # Get Max and Min temperatures
                             # ------------------------------------------------------
-                            T13COmax, T13COmin, T13COmean, T13COstd = self._get_slice_stats(self.thin, idx_slice_thin)
-                            T12COmax, T12COmin, T12COmean, T12COstd = self._get_slice_stats(self.thick, idx_slice_thick)
+                            #T13COmax, T13COmin, T13COmean, T13COstd = self._get_slice_stats(self.thin, idx_slice_thin)
+                            #T12COmax, T12COmin, T12COmean, T12COstd = self._get_slice_stats(self.thick, idx_slice_thick)
 
                             # If the line is over the threshold
-                            if (T13 > (T13COmean - thresh*T13COstd)) and (T12 > (T12COmean - thresh*T12COstd)):
-                                # FWHM correction
-                                # ------------------------------------------------------
-                                # Virial FWHM
-                                fwhm_vir = k_sigma*fwhms_vir[idx]
-                                fwhm_vir_km = fwhm_vir/f
-                                # LTE FWHM
-                                fwhm = k_sigma*fwhm
-                                fwhm_km = fwhm/f
+                            #if (T13 > (T13COmean - thresh*T13COstd)) and (T12 > (T12COmean - thresh*T12COstd)):
 
-                                # Virial mass
-                                # ------------------------------------------------------
-                                MVIR, Re = mass_virial(params, fwhm_vir_km)
+                            # FWHM correction
+                            # ------------------------------------------------------
+                            # Virial FWHM
+                            fwhm_vir = k_sigma*fwhms_vir[idx]
+                            fwhm_vir_km = fwhm_vir/f
+                            # LTE FWHM
+                            fwhm = k_sigma*fwhm
+                            fwhm_km = fwhm/f
 
-                                # LTE mass
-                                # ------------------------------------------------------
-                                if flag_match_lines:
-                                    # Line temperatures
-                                    T12CO = k*T12
-                                    T13CO = k*T13
-                                    # Get mass
-                                    MLTE, N_13CO, Re = mass_lte(params, T12CO, T13CO, v_thick, v_thin, fwhm_km, A10_thin)
-                                    # Column densities data
-                                    N_13CO, Tex, tau = column_density(T12CO, T13CO, v_thick, v_thin, fwhm_km, A10_thin)
-                                    Texs[idx] = Tex
-                                    N_H2 = get_nh2(self.thin, N_13CO)
-                                    N_13CO_a += N_13CO
-                                    N_H2_a += N_H2
-                           
-                                # X-factor
-                                # ------------------------------------------------------
-                                kn = T13/max_thin      # ?????
-                                line_temp = k*kn*gaussian(self.binned[name][self.thin]['vel'], A, mu, sigma)
-                                # Get integration limits
-                                nsigma = 1
-                                lim_min = mu - nsigma*sigma
-                                lim_max = mu + nsigma*sigma
+                            # Virial mass
+                            # ------------------------------------------------------
+                            MVIR, Re = mass_virial(params, fwhm_vir_km)
 
-                                # Get index limits
-                                line_min = np.where(lim_min>=self.binned[name][self.thin]['vel'])[0]
-                                line_max = np.where(lim_max<=self.binned[name][self.thin]['vel'])[0]
+                            # LTE mass
+                            # ------------------------------------------------------
+                            if flag_match_lines:
+                                # Line temperatures
+                                T12CO = k*T12
+                                T13CO = k*T13
+                                # Get mass
+                                MLTE, N_13CO, Re = mass_lte(params, T12CO, T13CO, v_thick, v_thin, fwhm_km, A10_thin)
+                                if np.isnan(MLTE):
+                                    print(name+" tau is negative. Thin/Thick temperature relation is too high")
+                                # Column densities data
+                                N_13CO, Tex, tau = column_density(T12CO, T13CO, v_thick, v_thin, fwhm_km, A10_thin)
+                                Texs[idx] = Tex
+                                N_H2 = get_nh2(self.thin, N_13CO)
+                                N_13CO_a += N_13CO
+                                N_H2_a += N_H2
+                       
+                            # X-factor
+                            # ------------------------------------------------------
+                            kn = T13/max_thin      # ?????
+                            line_temp = k*kn*gaussian(self.binned[name][self.thin]['vel'], A, mu, sigma)
+                            # Get integration limits
+                            nsigma = 1
+                            lim_min = mu - nsigma*sigma
+                            lim_max = mu + nsigma*sigma
 
-                                if len(line_min) > 0:
-                                    idx_lim_min = line_min[-1]
-                                else:
-                                    idx_lim_min = 0
+                            # Get index limits
+                            line_min = np.where(lim_min>=self.binned[name][self.thin]['vel'])[0]
+                            line_max = np.where(lim_max<=self.binned[name][self.thin]['vel'])[0]
 
-                                if len(line_max) > 0:
-                                    idx_lim_max = line_max[0]
-                                else:
-                                    idx_lim_max = -1
-
-                                vel_span = self.binned[name][self.thin]['vel'][idx_lim_min:idx_lim_max]/f
-                                line_span = line_temp[idx_lim_min:idx_lim_max]
-
-                                if len(line_span) > 0:
-                                    MXF, Re = mass_xf(params, vel_span, line_span)
-                                else:
-                                    MXF, Re = 0., 0.
-
+                            if len(line_min) > 0:
+                                idx_lim_min = line_min[-1]
                             else:
-                                # If the threshold is not reached, all the parameters are null
-                                # Masses
-                                MVIR = 0.0
-                                MLTE = 0.0
-                                MXF = 0.0
-                                # Column density
-                                N_13CO = 0.0
-                                N_H2 = 0.0
+                                idx_lim_min = 0
 
-                                mols_lows = ''
-                                if not T13 > (T13COmean - thresh*T13COstd):
-                                    mols_lows += self.thin
-                                if not T12 > (T12COmean - thresh*T12COstd):
-                                    if mols_lows:
-                                        mols_lows += ','+self.thick
-                                    else:
-                                        mols_lows += self.thick
+                            if len(line_max) > 0:
+                                idx_lim_max = line_max[0]
+                            else:
+                                idx_lim_max = -1
 
-                                msg(name+' Line '+mols_lows+' too low to be considered', 'warn')
+                            vel_span = self.binned[name][self.thin]['vel'][idx_lim_min:idx_lim_max]/f
+                            line_span = line_temp[idx_lim_min:idx_lim_max]
+
+                            if len(line_span) > 0:
+                                MXF, Re = mass_xf(params, vel_span, line_span)
+                            else:
+                                MXF, Re = 0., 0.
+
+                            # else:
+                            #     # If the threshold is not reached, all the parameters are null
+                            #     # Masses
+                            #     MVIR = 0.0
+                            #     MLTE = 0.0
+                            #     MXF = 0.0
+                            #     # Column density
+                            #     N_13CO = 0.0
+                            #     N_H2 = 0.0
+
+                            #     mols_lows = ''
+                            #     if not T13 > (T13COmean - thresh*T13COstd):
+                            #         mols_lows += self.thin
+                            #     if not T12 > (T12COmean - thresh*T12COstd):
+                            #         if mols_lows:
+                            #             mols_lows += ','+self.thick
+                            #         else:
+                            #             mols_lows += self.thick
+
+                            #     msg(name+' Line '+mols_lows+' too low to be considered', 'warn')
 
                             MVIR_a += MVIR
                             MLTE_a += MLTE
@@ -2885,6 +3084,11 @@ class mc(object):
 
                     else:
                         msg(name+' no '+self.thin+' line', 'warn')                    
+
+                else:
+                    MVIR_a, MLTE_a, MXF_a, N_13CO_a, N_H2_a, Re = np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
+                    if flag_maps:
+                        self.binned[name]['flag'] = True
 
                 # Get masses
                 # ------------------------------------------------------
@@ -3044,9 +3248,10 @@ class mc(object):
 
         m = 0.
         for nbin in self.binned.keys():
-            m_bin = self.binned[nbin][param]
-            if not np.isnan(m_bin):
-                m += m_bin
+            if not self.binned[nbin]['flag']:
+                m_bin = self.binned[nbin][param]
+                if not np.isnan(m_bin):
+                    m += m_bin
 
         msg('Total bin sum of '+param+': '+str(m), 'ok')
 
@@ -3142,7 +3347,7 @@ class mc(object):
             print ('Effective radius: {0:.2f} pc'.format(self.full['Re']))
 
 
-    def param_filter(self, param, max=None, min=None):
+    def param_filter(self, param, max_lim=None, min_lim=None):
         """
             Parameter filter file
             Parameters
@@ -3158,15 +3363,15 @@ class mc(object):
             return
 
         for kid in self.binned.keys():
-            if max and min:
-                if not (self.binned[kid][param] >= min and self.binned[kid][param] <= max):
-                    self.binned[kid][param] = 0.0
-            elif max:
-                if not self.binned[kid][param] <= max:
-                    self.binned[kid][param] = 0.0
-            elif min:
-                if not self.binned[kid][param] >= min:
-                    self.binned[kid][param] = 0.0
+            if max_lim and min_lim:
+                if not (self.binned[kid][param] >= min_lim and self.binned[kid][param] <= max_lim):
+                    self.binned[kid]['flag'] = True
+            elif max_lim:
+                if not self.binned[kid][param] <= max_lim:
+                    self.binned[kid]['flag'] = True
+            elif min_lim:
+                if not self.binned[kid][param] >= min_lim:
+                    self.binned[kid]['flag'] = True
 
         msg('Done', 'ok')
 

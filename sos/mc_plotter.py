@@ -387,6 +387,8 @@ def plot_moment(Mn, contour=True, **kwargs):
     alpha_contours = kwargs.pop('alpha_contours', 0.5)
     # Color scale
     cmap = kwargs.pop('cmap', 'gist_gray_r')
+    # Log scale
+    log = kwargs.pop('log', False)
     # ----------------------------------------------
 
     # Get order
@@ -399,7 +401,11 @@ def plot_moment(Mn, contour=True, **kwargs):
     ax = fig.add_subplot(111, projection=wcs)
 
     # Show M0 map
-    img = ax.imshow(Mn['data'].T, cmap=cmap, origin='lower')
+    data_to_plot = Mn['data'].T
+    # Log scale?
+    if log:
+        data_to_plot = np.log10(data_to_plot)
+    img = ax.imshow(data_to_plot, cmap=cmap, origin='lower')
     fig.colorbar(img, orientation='vertical', label=uts)
     
     # Add contours
@@ -649,8 +655,11 @@ def _binparams2img(mc, param):
             name = 'B'+str(b)
             # Get coordinates
             i, j = mc[name]['pos']
-            # Get parameter value
-            m = mc[name][param]
+            if not mc[name]['flag']:
+                # Get parameter value
+                m = mc[name][param]
+            else:
+                m = np.nan
         else:
             # Get coordinate
             i, j = 0, 0

@@ -45,15 +45,20 @@ def column_density(T_thick, T_thin, v_thick, v_thin, fwhm, A10, X=5e5):
     """
     # Excitation temperature of 12C0
     m_thick = h*v_thick/K
-    Tex = m_thick/(np.log(1 + m_thick/(T_thick + Jv(v_thick, Tcmb))))
-    # 13C0 Column density and optical depth
-    m_thin = h*v_thin/K
-    tau_thin = -np.log( np.abs(1.0 - (T_thin / (m_thin/(np.exp(m_thin/Tex) - 1.0) - Jv(v_thin, Tcmb)))) )
-    # Column density
-    alpha = 1.6*np.pi*K*(v_thin**2)/(3*h*(c**3)*A10)
-    N_thin = alpha * (fwhm) * Tex * ( tau_thin/(1.0 - np.exp(-m_thin/Tex)) )
+    a = 1 + m_thick/(T_thick + Jv(v_thick, Tcmb))
+    if a >= 0:
+        Tex = m_thick/(np.log(a))
+        # 13C0 Column density and optical depth
+        m_thin = h*v_thin/K
+        tau_thin = -np.log( np.abs(1.0 - (T_thin / (m_thin/(np.exp(m_thin/Tex) - 1.0) - Jv(v_thin, Tcmb)))) )
+        # Column density
+        alpha = 1.6*np.pi*K*(v_thin**2)/(3*h*(c**3)*A10)
+        N_thin = alpha * (fwhm) * Tex * ( tau_thin/(1.0 - np.exp(-m_thin/Tex)) )
 
-    return N_thin, Tex, tau_thin
+        return N_thin, Tex, tau_thin
+
+    else:
+        return np.nan, np.nan, np.nan
 
 
 def Jv(v, T):
@@ -116,9 +121,8 @@ def mass_lte(params, T_thick, T_thin, v_thick, v_thin, fwhm, A10, X=5e5):
         # LTE Mass
         MLTE = 0.065 * X * ((Re/5.0)**2) * ((N_thin/1e17))
     else:
-        MLTE = 0
-        N_thin = 0
-        print("Tau is negative. Thin/Thick temperature relation is too high")
+        MLTE = np.nan
+        N_thin = np.nan
 
     return MLTE, N_thin, Re
 
