@@ -21,7 +21,7 @@ from scipy import integrate
 from .misc.constants import *
 
 
-def column_density(T_thick, T_thin, v_thick, v_thin, fwhm, A10, X=5e5):
+def column_density(T_thick, T_thin, v_thick, v_thin, fwhm, A10, J):
     """
         Column density based on Retes-Romero et al. (2018)
 
@@ -38,22 +38,22 @@ def column_density(T_thick, T_thin, v_thick, v_thin, fwhm, A10, X=5e5):
         fwhm : float
             Full-Width at Half Maximum [km/s] of the molecular line [km s^-1]
         A10 : float
-            Einstein A coeficient     
-        X : float
-            Abundance relative to the Molecular H2       
+            Einstein A coeficient         
         ----------
     """
     # Excitation temperature of 12C0
     m_thick = h*v_thick/K
+
     a = 1 + m_thick/(T_thick + Jv(v_thick, Tcmb))
     if a >= 0:
         Tex = m_thick/(np.log(a))
         # 13C0 Column density and optical depth
         m_thin = h*v_thin/K
+        
         tau_thin = -np.log( np.abs(1.0 - (T_thin / (m_thin/(np.exp(m_thin/Tex) - 1.0) - Jv(v_thin, Tcmb)))) )
         # Column density
-        alpha = 1.6*np.pi*K*(v_thin**2)/(3*h*(c**3)*A10)
-        N_thin = alpha * (fwhm) * Tex * ( tau_thin/(1.0 - np.exp(-m_thin/Tex)) )
+        alpha = 1.6*J*np.pi*K*(v_thin**2)/((2*J+1)*h*(c**3)*A10)
+        N_thin = alpha * (fwhm) * Tex * ( tau_thin/( (np.exp(m_thin/Tex) - 1.0)*(np.exp(-(J+1)*m_thin/Tex)) ) )
 
         return N_thin, Tex, tau_thin
 
@@ -78,7 +78,7 @@ def Jv(v, T):
     return Jv
 
 
-def mass_lte(params, T_thick, T_thin, v_thick, v_thin, fwhm, A10, X=5e5):
+def mass_lte(params, T_thick, T_thin, v_thick, v_thin, fwhm, A10, X=5e5, J=1):
     """
         Mass through Local Termodynamic Equilibrium method based on
         Retes-Romero et al. (2018)
@@ -113,7 +113,7 @@ def mass_lte(params, T_thick, T_thin, v_thick, v_thin, fwhm, A10, X=5e5):
     kRe = params[2]     # Effective radius factor
 
     # Column density and Excitation temperature
-    N_thin, Tex, tau = column_density(T_thick, T_thin, v_thick, v_thin, fwhm, A10, X)
+    N_thin, Tex, tau = column_density(T_thick, T_thin, v_thick, v_thin, fwhm, A10, J)
     # Effective radius
     Re = kRe*d*np.tan(theta*0.5*np.pi/180.)
 

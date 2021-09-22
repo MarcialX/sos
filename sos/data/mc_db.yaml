@@ -38,12 +38,12 @@ MC76: {
   stokes: ./data_cube/IQU_MC76.fits}
 
 3Orion: {
-  12CO: ./data_cube/3Orion.CO1221.Osaka.beam204.cube.fits,
-  13CO: ./data_cube/3Orion.CO1321.Osaka.beam204.cube.fits,
+  12CO: ./data_cube/7AOrion.CO1221.Osaka.beam204.cube.fits,
+  13CO: ./data_cube/7AOrion.CO1321.Osaka.beam204.cube.fits,
   C18O: ,
   Re_factor: 1.0,
-  ang_dia: 1.6667,
-  dist: 140.0,
+  ang_dia: 1.0,
+  dist: 420.0,
   temp_factor: 1.0,
   width_factor: 1.0,
   x0: 205.28333, 

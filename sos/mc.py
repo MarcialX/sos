@@ -1176,7 +1176,7 @@ class mc(object):
         return mc_mol
 
 
-    def map_vel_mol(self, mol):
+    def map_vel_mol(self, mol, method='avg'):
         """
             Integrated velocity map of the whole region by molecule
             Parameters
@@ -1199,12 +1199,12 @@ class mc(object):
             return
 
         # Get map velocity
-        map_vel = self.map_vel(v, data, cdelt)
+        map_vel = self.map_vel(v, data, cdelt, method)
 
         return map_vel
 
 
-    def map_vel(self, v, data, cdelt, *args, **kwargs):
+    def map_vel(self, v, data, cdelt, method='avg', *args, **kwargs):
         """
             Integrated velocity map of the data region
             Parameters
@@ -1220,25 +1220,36 @@ class mc(object):
         # ----------------------------------------------
         # Frame definition
         frame = kwargs.pop('frame', np.zeros(v))
+        # Number of frame bits
+        n_frames = kwargs.pop('n_frames', 0)
         # ----------------------------------------------
 
         # Initiate velocity array
         map_vel = np.zeros(v)
         # Get the velocity profile
         for i in range(v):
-            map_vel[i] = np.abs(cdelt[1]*cdelt[0])*(np.nansum([np.nansum(data[i, :, :]),frame[i]]))
+            # Remove any nan in data
+            data_f = data[i,:,:].flatten()
+            data_f = data_f[~np.isnan(data_f)]
+            # Get the sum
+            map_sum = np.sum([np.sum(data_f),frame[i]])
+
+            if method == 'int':
+                map_vel[i] = np.abs(cdelt[1]*cdelt[0])*map_sum
+            elif method == 'avg':
+                map_vel[i] = map_sum/(n_frames+len(data_f))
 
         return map_vel
 
 
-    def get_map_vels(self):
+    def get_map_vels(self, method='avg'):
         """
-            Get map velocities for all the molecules
+            Get integrated map velocities for all the molecules
         """
         msg('Creating integrated velocity maps...', 'info')
         for mol in self.mols:
             # Define the molecular lines
-            self.full[mol]['line'] = self.map_vel_mol(mol)
+            self.full[mol]['line'] = self.map_vel_mol(mol, method)
             # Define the baselines
             self.baseline[mol] = np.zeros_like(self.full[mol]['line'])
 
@@ -1267,7 +1278,7 @@ class mc(object):
             if len(channels) > 0:
                 for chn in channels:
                     if chn < nchns:
-                        noise[chn] = np.nansum(self.Dmol[mol][chn, :, :])
+                        noise[chn] = np.nansum(self.Dmol[mol][chn,:,:])
                     else:
                         msg('Channel '+str(chn)+' does not exist', 'warn')
 
@@ -1281,7 +1292,7 @@ class mc(object):
                 ymin = int(margins[1][0]*ydim)
                 ymax = int(margins[1][1]*ydim)
 
-                # Get data for each margi
+                # Get data for each margin
                 for chn in range(nchns):
                     if not chn in channels:
                         lmargin = self.Dmol[mol][chn][:ymin].flatten()
@@ -1295,21 +1306,62 @@ class mc(object):
                         noise[chn] = np.nansum(noise_frame)*k
 
         # Clean from nan arrays
-        noise = np.abs(cdelt[1]*cdelt[0])*noise
+        noise = noise/(xdim*ydim)
         self.noise[mol] = noise
 
         # Noise statistics
         self.noise_stat[mol] = {
                 'mean':np.nanmean(noise),
                 'std':np.nanstd(noise),
-                'median':np.nanmedian(noise)
+                'median':np.nanmedian(noise),
+                'rms': np.sqrt(np.nanmean(noise**2))
         }
 
         if verbose:
             print('========== MAP STATISTICS ==========')
+            print('RMS noise map: ', self.noise_stat[mol]['rms'])
             print('Mean noise map: ', self.noise_stat[mol]['mean'])
             print('Standard deviation map: ', self.noise_stat[mol]['std'])
             print('Median map: ', self.noise_stat[mol]['median'])
+
+
+    def get_param_stat(self, param, *args, **kwargs):
+        """
+            Get the statistic of a parameter
+            Parameters
+            ----------
+            param : str
+                Parameter to get the statistic
+            ----------
+        """
+
+        # Key arguments
+        # ----------------------------------------------
+        # Verbose
+        verbose = kwargs.pop('verbose', True)
+        # ----------------------------------------------
+
+        params = []
+        for nbin in self.binned.keys():
+            if not self.binned[nbin]['flag']:
+                params.append( self.binned[nbin][param] )
+
+        params = np.array(params)
+
+        # Get mean
+        mean_param = np.nanmean(params)
+        # Get median
+        med_param = np.nanmedian(params)
+        # Get std
+        std_param = np.nanstd(params)
+
+        if verbose:
+            print('========== PARAM STATISTICS ==========')
+            print('Mean:               ', mean_param)
+            print('Standard deviation: ', med_param)
+            print('Median:             ', std_param)
+
+        return mean_param, med_param, std_param, params
 
 
     def substract_baseline(self, mol, inter=False, **kwargs):
@@ -1568,7 +1620,13 @@ class mc(object):
                 flag_maps = False
 
         # Sigma threshold
-        sigma_thresh = kwargs.pop('sigma_thresh', 3)
+        sigma_thresh = kwargs.pop('sigma_thresh', 1)
+
+        # Sigma noise
+        sigma_type = kwargs.pop('sigma_type', 'rms')
+        if not sigma_type in ['rms', 'std']:
+            msg('Sigma type is not valid. RMS assigned by default', 'warm')
+            sigma_type = 'rms'
 
         # verbose
         verbose = kwargs.pop('verbose', False)
@@ -1584,9 +1642,13 @@ class mc(object):
             # Check if the map is not noise
             proceed = False
             if flag_maps:
-                mean_noise = self.noise_stat[mol]['mean']
-                std_noise = self.noise_stat[mol]['std']
-                line_thresh = mean_noise+sigma_thresh*std_noise
+                if sigma_type == 'std':
+                    mean_noise = self.noise_stat[mol]['mean']
+                    std_noise = self.noise_stat[mol]['std']
+                    line_thresh = mean_noise+sigma_thresh*std_noise
+                else:
+                    rms_noise = self.noise_stat[mol]['rms']
+                    line_thresh = sigma_thresh*rms_noise
                 
                 above_thresh_points = np.where(np.abs(spectra) > line_thresh)[0]
 
@@ -1743,11 +1805,11 @@ class mc(object):
 
     def bin2array(self, mol):
         """
-            Get basic statistics from the binning
+            Convert from bin format to dict array format
             Parameters
             ----------
             mol : string
-                Molecule
+                molecule or parameter
             ----------
         """
         aux_param = {}
@@ -1933,6 +1995,8 @@ class mc(object):
             for m in mol_params[self.thin].keys():
                 if line_thin in m:
                     A10_thin = mol_params[self.thin][m]['A10']
+                    X_thin = mol_params[self.thin]['X']
+                    J = int(line_thin[0])
 
             # Initialise parameters
             MVIR_a, MLTE_a, MXF_a, N_13CO_a, N_H2_a, Re = 0, 0, 0, 0, 0, 0
@@ -1960,53 +2024,60 @@ class mc(object):
                 # Get line temperatures
                 # Use 12CO(optically thick molecule)
                 # ------------------------------------------------------
-                # Thin molecule
-                line_left = np.where(mu>=self.full[self.thick]['vel'])[0]
-                if len(line_left) > 0:
-                    idx_left = line_left[-1]
-                else:
-                    idx_left = 0
 
-                idx_right = idx_left + 1
-                if idx_right >= len(self.full[self.thick]['vel']):
-                    idx_right = idx_left
+                # Code used to get T12 and T13, now it is obsolete
+                # ------------------------------------------------------
+                # Thick molecule
+                # line_left = np.where(mu>=self.full[self.thick]['vel'])[0]
+                # if len(line_left) > 0:
+                #     idx_left = line_left[-1]
+                # else:
+                #     idx_left = 0
 
-                if (mu - self.full[self.thick]['vel'][idx_left])<=(self.full[self.thick]['vel'][idx_right] - mu):
-                    idx_slice_thick = idx_left
-                else:
-                    idx_slice_thick = idx_right
+                # idx_right = idx_left + 1
+                # if idx_right >= len(self.full[self.thick]['vel']):
+                #     idx_right = idx_left
 
-                # Thin molecule
-                line_left = np.where(mu>=self.full[self.thin]['vel'])[0]
-                if len(line_left) > 0:
-                    idx_left = line_left[-1]
-                else:
-                    idx_left = 0
+                # if (mu - self.full[self.thick]['vel'][idx_left])<=(self.full[self.thick]['vel'][idx_right] - mu):
+                #     idx_slice_thick = idx_left
+                # else:
+                #     idx_slice_thick = idx_right
 
-                idx_right = idx_left + 1
-                if idx_right >= len(self.full[self.thin]['vel']):
-                    idx_right = idx_left
+                # # Thin molecule
+                # line_left = np.where(mu>=self.full[self.thin]['vel'])[0]
+                # if len(line_left) > 0:
+                #     idx_left = line_left[-1]
+                # else:
+                #     idx_left = 0
 
-                if (mu - self.full[self.thin]['vel'][idx_left])<=(self.full[self.thin]['vel'][idx_right] - mu):
-                    idx_slice_thin = idx_left
-                else:
-                    idx_slice_thin = idx_right
+                # idx_right = idx_left + 1
+                # if idx_right >= len(self.full[self.thin]['vel']):
+                #     idx_right = idx_left
 
+                # if (mu - self.full[self.thin]['vel'][idx_left])<=(self.full[self.thin]['vel'][idx_right] - mu):
+                #     idx_slice_thin = idx_left
+                # else:
+                #     idx_slice_thin = idx_right
 
-                img_thin = gaussian_filter(self.Dmol[self.thin][idx_slice_thin], sigma=sigma_filter)
-                img_thick = gaussian_filter(self.Dmol[self.thick][idx_slice_thick], sigma=sigma_filter)
-                T13, T12 = self.get_line_temp(img_thin, img_thick, method=method)
+                # img_thin = gaussian_filter(self.Dmol[self.thin][idx_slice_thin], sigma=sigma_filter)
+                # img_thick = gaussian_filter(self.Dmol[self.thick][idx_slice_thick], sigma=sigma_filter)
+                # T13, T12 = self.get_line_temp(img_thin, img_thick, method=method)
                 
-                # Get normalization factor               
-                # Get real line value
-                max_thin = self.full[self.thin]['line'][idx_slice_thin]
-                max_thick = self.full[self.thick]['line'][idx_slice_thick]
+                # # Get normalization factor               
+                # # Get real line value
+                # max_thin = self.full[self.thin]['line'][idx_slice_thin]
+                # max_thick = self.full[self.thick]['line'][idx_slice_thick]
 
-                # Normalise thin molecule
-                T13 = T13*A/max_thin
-                # Normalise thick molecule
-                P_thick = gaussian(self.full[self.thick]['vel'][idx_slice_thick], A_thick, mu_thick, sigma_thick)
-                T12 = T12*P_thick/max_thick
+                # # Normalise thin molecule
+                # T13 = T13*A/max_thin
+                # # Normalise thick molecule
+                # P_thick = gaussian(self.full[self.thick]['vel'][idx_slice_thick], A_thick, mu_thick, sigma_thick)
+                # T12 = T12*P_thick/max_thick
+                # ------------------------------------------------------
+
+                # Assign the peak main beam temperature
+                T13 = A         # Temperature of thin molecule
+                T12 = A_thick   # Temperature of thick molecule
 
                 T13s[idx] = T13 
                 T12s[idx] = T12
@@ -2032,13 +2103,12 @@ class mc(object):
                     # Line temperatures
                     T12CO = k*T12
                     T13CO = k*T13
-
                     # Get mass
-                    MLTE, N_13CO, Re = mass_lte(params, T12CO, T13CO, v_thick, v_thin, fwhm_km, A10_thin)
+                    MLTE, N_13CO, Re = mass_lte(params, T12CO, T13CO, v_thick, v_thin, fwhm_km, A10_thin, X_thin, J)
                     # Accumulate masses
                     MLTE_a += MLTE
                     # Column densities data
-                    N_13CO, Tex, tau = column_density(T12CO, T13CO, v_thick, v_thin, fwhm_km, A10_thin)
+                    N_13CO, Tex, tau = column_density(T12CO, T13CO, v_thick, v_thin, fwhm_km, A10_thin, J)
                     Texs[idx] = Tex
                     N_H2 = get_nh2(self.thin, N_13CO)
                     # Accumulate column density
@@ -2047,7 +2117,8 @@ class mc(object):
 
                 # X-factor
                 # ------------------------------------------------------
-                kn = T13/max_thin      # ????? A/max_thin
+                #kn = T13/max_thin      # ????? A/max_thin
+                kn = 1
                 line_temp = k*kn*gaussian(self.full[self.thin]['vel'], A, mu, sigma)
                 # Get integration limits
                 nsigma = 1
@@ -2367,6 +2438,8 @@ class mc(object):
         # ----------------------------------------------
         # Choose bin to fit
         nbin = kwargs.pop('nbin', None)
+        # Channels
+        chns = kwargs.pop('chns', (5,5))
         # ----------------------------------------------
 
         # Force n lines according with the number of lines of the thin molecule
@@ -2389,6 +2462,12 @@ class mc(object):
         # Sigma threshold
         sigma_thresh = kwargs.pop('sigma_thresh', 1)
 
+        # Sigma noise
+        sigma_type = kwargs.pop('sigma_type', 'rms')
+        if not sigma_type in ['rms', 'std']:
+            msg('Sigma type is not valid. RMS assigned by default', 'warm')
+            sigma_type = 'rms'
+
         # Verbose
         verbose = kwargs.pop('verbose', False)
 
@@ -2400,11 +2479,14 @@ class mc(object):
                 names = self.binned.keys()
 
             # Get noise constrains
-            if flag_maps:
-                tot_bins = np.sqrt(len(names))
-                mean_noise = self.noise_stat[mol]['mean']/tot_bins
-                std_noise = self.noise_stat[mol]['std']/tot_bins
-                line_thresh = mean_noise+sigma_thresh*std_noise
+            #if flag_maps:
+                #if sigma_type == 'std':
+                    #mean_noise = self.noise_stat[mol]['mean']
+                    #std_noise = self.noise_stat[mol]['std']
+                    #line_thresh = (mean_noise+sigma_thresh*std_noise)*(tot_bins/4)
+                #else:
+                    #rms_noise = self.noise_stat[mol]['rms']
+                    #line_thresh = (sigma_thresh*rms_noise)*(tot_bins/4)
 
             for name in names:
                 if len(self.binned[name][mol]['line']) == 0:
@@ -2420,6 +2502,16 @@ class mc(object):
                 # Check if the map is not noise
                 proceed = False
                 if flag_maps:
+                    # Get noise signal
+                    noise_data = np.concatenate((self.binned[name][mol]['line'][:chns[0]], self.binned[name][mol]['line'][-1*chns[1]:]))
+                    if sigma_type == 'std':
+                        mean_noise = np.nanmean(noise_data)
+                        std_noise = np.nanstd(noise_data)
+                        line_thresh = mean_noise+sigma_thresh*std_noise
+                    else:
+                        rms_noise = np.sqrt(np.nanmean(noise_data**2))
+                        line_thresh = sigma_thresh*rms_noise
+
                     above_thresh_points = np.where(np.abs(spectra) > line_thresh)[0]
                     if len(above_thresh_points) > 0:
                         # Detect spikes
@@ -2659,10 +2751,20 @@ class mc(object):
                     bin_frames.append(frames_pts)
 
                 # Defining the sub-region
-                bin_data = data[:, ymin:ymax, xmin:xmax]            
+                bin_data = data[:, ymin:ymax, xmin:xmax]  
+
+                if len(frames_pts)>0:
+                    if rebin:
+                        nframes = frames_pts
+                    else:
+                        nframes = frames_pts[cell]
+                    nsum = 0
+                    for nf in nframes:
+                        nsum += nf[2]
+                else:
+                    nsum = 0
                 # Get the integrated velocity
-                vel_bin[i][j][:] = self.map_vel(v, bin_data, cdelt, frame=add_data_pix)
-                
+                vel_bin[i][j][:] = self.map_vel(v, bin_data, cdelt, frame=add_data_pix, n_frames=nsum)
                 cell += 1
 
         if rebin:
@@ -2793,7 +2895,7 @@ class mc(object):
         # Sigma of Gaussian filter to get the lines temperatures from maps
         sigma_filter = kwargs.pop('sigma_filter', 1)
         # No gaussian filter applied
-        no_filter = kwargs.pop('no_filter', False)
+        # no_filter = kwargs.pop('no_filter', False)
         # Temperature threshold to be considered as a valid line
         #thresh = kwargs.pop('thresh', 3)
         # Flag lines
@@ -2833,17 +2935,17 @@ class mc(object):
         f, _ = get_factors_units('km s^-1', su) 
 
         # Apply a filter for all the images
-        slices = self.Dmol[self.thin].shape[0]
-        filter_data_thin = np.zeros_like(self.Dmol[self.thin])
-        filter_data_thick = np.zeros_like(self.Dmol[self.thick])
+        # slices = self.Dmol[self.thin].shape[0]
+        # filter_data_thin = np.zeros_like(self.Dmol[self.thin])
+        # filter_data_thick = np.zeros_like(self.Dmol[self.thick])
 
-        for s in range(slices):
-            if no_filter:
-                filter_data_thin[s] = self.Dmol[self.thin][s]
-                filter_data_thick[s] =self.Dmol[self.thick][s]
-            else:   
-                filter_data_thin[s] = gaussian_filter(self.Dmol[self.thin][s], sigma=sigma_filter)
-                filter_data_thick[s] = gaussian_filter(self.Dmol[self.thick][s], sigma=sigma_filter)
+        # for s in range(slices):
+        #     if no_filter:
+        #         filter_data_thin[s] = self.Dmol[self.thin][s]
+        #         filter_data_thick[s] =self.Dmol[self.thick][s]
+        #     else:   
+        #         filter_data_thin[s] = gaussian_filter(self.Dmol[self.thin][s], sigma=sigma_filter)
+        #         filter_data_thick[s] = gaussian_filter(self.Dmol[self.thick][s], sigma=sigma_filter)
 
         for name in self.binned.keys():
             # Check if bin is not flagged
@@ -2888,6 +2990,8 @@ class mc(object):
                 for m in mol_params[self.thin].keys():
                     if line_thin in m:
                         A10_thin = mol_params[self.thin][m]['A10']
+                        X_thin = mol_params[self.thin]['X']
+                        J = int(line_thin[0])
 
                 # Initialise physical parameters
                 tau = 0
@@ -2924,61 +3028,74 @@ class mc(object):
                             # Get line temperatures
                             # Use 12CO (optically thick molecule)
                             # ------------------------------------------------------
+                            
+                            # Code used to get T12 and T13, now it is obsolete
+                            # ------------------------------------------------------
                             # Thin molecules
-                            line_left = np.where(mu>=self.binned[name][self.thin]['vel'])[0]
-                            if len(line_left) > 0:
-                                idx_left = line_left[-1]
-                            else:
-                                idx_left = 0
+                            # line_left = np.where(mu>=self.binned[name][self.thin]['vel'])[0]
+                            # if len(line_left) > 0:
+                            #     idx_left = line_left[-1]
+                            # else:
+                            #     idx_left = 0
 
-                            idx_right = idx_left + 1
-                            if idx_right >= len(self.binned[name][self.thin]['vel']):
-                                idx_right = idx_left
+                            # idx_right = idx_left + 1
+                            # if idx_right >= len(self.binned[name][self.thin]['vel']):
+                            #     idx_right = idx_left
 
-                            if (mu - self.binned[name][self.thin]['vel'][idx_left]) <= (self.binned[name][self.thin]['vel'][idx_right] - mu):
-                                idx_slice_thin = idx_left
-                            else:
-                                idx_slice_thin = idx_right
+                            # if (mu - self.binned[name][self.thin]['vel'][idx_left]) <= (self.binned[name][self.thin]['vel'][idx_right] - mu):
+                            #     idx_slice_thin = idx_left
+                            # else:
+                            #     idx_slice_thin = idx_right
 
-                            # Thick molecules
-                            line_left = np.where(mu>=self.binned[name][self.thick]['vel'])[0]
-                            if len(line_left) > 0:
-                                idx_left = line_left[-1]
-                            else:
-                                idx_left = 0
+                            # # Thick molecules
+                            # line_left = np.where(mu>=self.binned[name][self.thick]['vel'])[0]
+                            # if len(line_left) > 0:
+                            #     idx_left = line_left[-1]
+                            # else:
+                            #     idx_left = 0
 
-                            idx_right = idx_left + 1
-                            if idx_right >= len(self.binned[name][self.thick]['vel']):
-                                idx_right = idx_left
+                            # idx_right = idx_left + 1
+                            # if idx_right >= len(self.binned[name][self.thick]['vel']):
+                            #     idx_right = idx_left
 
-                            if (mu - self.binned[name][self.thick]['vel'][idx_left]) <= (self.binned[name][self.thick]['vel'][idx_right] - mu):
-                                idx_slice_thick = idx_left
-                            else:
-                                idx_slice_thick = idx_right
+                            # if (mu - self.binned[name][self.thick]['vel'][idx_left]) <= (self.binned[name][self.thick]['vel'][idx_right] - mu):
+                            #     idx_slice_thick = idx_left
+                            # else:
+                            #     idx_slice_thick = idx_right
 
-                            # Asign slice according to their maximum line profile
-                            img_thin = filter_data_thin[idx_slice_thin]
-                            img_thick = filter_data_thick[idx_slice_thick]
+                            # # Asign slice according to their maximum line profile
+                            # img_thin = filter_data_thin[idx_slice_thin]
+                            # img_thick = filter_data_thick[idx_slice_thick]
 
-                            # Check if there is data no nan available
-                            img_thin_no_nan = img_thin[~np.isnan(img_thin)]
-                            img_thick_no_nan = img_thick[~np.isnan(img_thick)]
+                            # # Check if there is data no nan available
+                            # img_thin_no_nan = img_thin[~np.isnan(img_thin)]
+                            # img_thick_no_nan = img_thick[~np.isnan(img_thick)]
 
-                            if len(img_thin_no_nan) > 0 and len(img_thick_no_nan) > 0:
-                                T13, T12 = self.get_line_temp(img_thin, img_thick, bounds=bounds, frames=frames, centre_square=1.0, method=method)
-                            else:
-                                T13, T12 = np.nan, np.nan
+                            # if len(img_thin_no_nan) > 0 and len(img_thick_no_nan) > 0:
+                            #     T13, T12 = self.get_line_temp(img_thin, img_thick, bounds=bounds, frames=frames, centre_square=1.0, method=method)
+                            # else:
+                            #     T13, T12 = np.nan, np.nan
 
-                            # Get normalization factor               
-                            # Get real line value
-                            max_thin = self.binned[name][self.thin]['line'][idx_slice_thin]
-                            max_thick = self.binned[name][self.thick]['line'][idx_slice_thick]
+                            # # Get normalization factor               
+                            # # Get real line value
+                            # max_thin = self.binned[name][self.thin]['line'][idx_slice_thin]
+                            # max_thick = self.binned[name][self.thick]['line'][idx_slice_thick]
 
-                            # Normalise thin molecule
-                            T13 = T13*A/max_thin
-                            # Normalise thick molecule
-                            P_thick = gaussian(self.binned[name][self.thick]['vel'][idx_slice_thick], A_thick, mu_thick, sigma_thick)
-                            T12 = T12*P_thick/max_thick
+                            # # Normalise thin molecule
+                            # T13 = T13*A/max_thin
+                            # # Normalise thick molecule
+                            # P_thick = gaussian(self.binned[name][self.thick]['vel'][idx_slice_thick], A_thick, mu_thick, sigma_thick)
+                            # T12 = T12*P_thick/max_thick
+                            # ------------------------------------------------------
+
+                            # Assign the peak main beam temperature
+                            #if len(img_thin_no_nan) > 0 and len(img_thick_no_nan) > 0:
+                            #    T13, T12 = self.get_line_temp(img_thin, img_thick, bounds=bounds, frames=frames, centre_square=1.0, method=method)
+                            #else:
+                            #    T13, T12 = np.nan, np.nan
+
+                            T13 = A         # Temperature of thin molecule
+                            T12 = A_thick   # Temperature of thick molecule
 
                             T12s[idx] = T12 
                             T13s[idx] = T13
@@ -3011,11 +3128,11 @@ class mc(object):
                                 T12CO = k*T12
                                 T13CO = k*T13
                                 # Get mass
-                                MLTE, N_13CO, Re = mass_lte(params, T12CO, T13CO, v_thick, v_thin, fwhm_km, A10_thin)
+                                MLTE, N_13CO, Re = mass_lte(params, T12CO, T13CO, v_thick, v_thin, fwhm_km, A10_thin, X_thin, J)
                                 if np.isnan(MLTE):
                                     print(name+" tau is negative. Thin/Thick temperature relation is too high")
                                 # Column densities data
-                                N_13CO, Tex, tau = column_density(T12CO, T13CO, v_thick, v_thin, fwhm_km, A10_thin)
+                                N_13CO, Tex, tau = column_density(T12CO, T13CO, v_thick, v_thin, fwhm_km, A10_thin, J)
                                 Texs[idx] = Tex
                                 N_H2 = get_nh2(self.thin, N_13CO)
                                 N_13CO_a += N_13CO
@@ -3023,7 +3140,8 @@ class mc(object):
                        
                             # X-factor
                             # ------------------------------------------------------
-                            kn = T13/max_thin      # ?????
+                            #kn = T13/max_thin      # ?????
+                            kn = 1
                             line_temp = k*kn*gaussian(self.binned[name][self.thin]['vel'], A, mu, sigma)
                             # Get integration limits
                             nsigma = 1
