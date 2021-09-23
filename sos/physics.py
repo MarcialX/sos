@@ -114,6 +114,7 @@ def mass_lte(params, T_thick, T_thin, v_thick, v_thin, fwhm, A10, X=5e5, J=1):
 
     # Column density and Excitation temperature
     N_thin, Tex, tau = column_density(T_thick, T_thin, v_thick, v_thin, fwhm, A10, J)
+
     # Effective radius
     Re = kRe*d*np.tan(theta*0.5*np.pi/180.)
 

@@ -221,12 +221,14 @@ class mc(object):
         """
         # Get dimensions
         flag_dims = True
-        aux = 0
+        aux_xp = 0
+        aux_yp = 0
         for i, mol in enumerate(self.mols):
             xp = self.Hmol[mol]['NAXIS1']
             yp = self.Hmol[mol]['NAXIS2']
-            if (xp == aux and yp == aux) or i == 0:
-                aux = xp
+            if (xp == aux_xp and yp == aux_yp) or i == 0:
+                aux_xp = xp
+                aux_yp = yp
             else:
                 flag_dims = False
                 break
@@ -1937,6 +1939,8 @@ class mc(object):
         mol_vir = kwargs.pop('mol_vir', 'thin')
         # Method to get radiation temperature 
         method = kwargs.pop('method', 'max')
+        # Get general parameters by full map 
+        full_map = kwargs.pop('full_map', False)
         # ----------------------------------------------
 
         # Check if fwhm is calculated
@@ -1949,7 +1953,15 @@ class mc(object):
 
         # Main physical parameters
         dist = self.mc_params['dist']
-        theta = self.mc_params['ang_dia']
+        if full_map:
+            lon_len = np.abs(self.lon_m[-1] - self.lon_m[0])
+            lat_len = np.abs(self.lat_m[-1] - self.lat_m[0])
+            A_area = lon_len*lat_len
+            theta = 2*np.arctan(np.sqrt(A_area/(np.pi*dist**2)))
+            theta = theta*180/np.pi
+        else:
+            theta = self.mc_params['ang_dia']
+        
         kRe = self.mc_params['Re_factor']
         # Put params together
         params = [dist, theta, kRe]
@@ -2915,11 +2927,12 @@ class mc(object):
         b_axis = np.max(np.abs(dims_size))
         a_axis = np.min(np.abs(dims_size))
         dims_factor = b_axis/a_axis
-        kRe_square = 4*dims_factor*kRe/np.pi
+        kRe_square = kRe*np.sqrt(4*dims_factor/np.pi)
         # Angular size
         # theta = self.mc_params['ang_dia']/self.nbins
         min_theta = np.min((np.abs(self.full[self.thin]['lat'][-1]-self.full[self.thin]['lat'][0]),\
                     np.abs(self.full[self.thin]['lon'][-1]-self.full[self.thin]['lon'][0])))
+
         theta = min_theta/self.nbins
 
         # Put params together

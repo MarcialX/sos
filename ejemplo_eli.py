@@ -57,8 +57,8 @@ mc.binning_mol('12CO', nbins)
 # si esta por debajo se ignora el pixel. Este valor normalmente es más chico a medida
 # que incrementamos la resolución. Sugiero probar con este e irlo cambiando para ver
 # los cambios
-mc.line_fit_binning('13CO', forced_lines=1, sigma_thresh=2.7)
-mc.line_fit_binning('12CO', forced_lines=1, sigma_thresh=2.7)
+mc.line_fit_binning('13CO', forced_lines=1, sigma_thresh=2.6)
+mc.line_fit_binning('12CO', forced_lines=1, sigma_thresh=2.6)
 # Calculamos los parámetros de cada pixel.
 # El parámetro 'no_filter' sólo le indica al programa que no aplique suavizado a los
 # mapas. Esto se recomienda para cubos de datos que contengan valores vacíos (nan)
@@ -66,7 +66,7 @@ mc.line_fit_binning('12CO', forced_lines=1, sigma_thresh=2.7)
 mc.get_bins_params()
 # Con el criterio de sólo usar espectros con cierto umbral los resultados parecen
 # no necesitar de este filtro. Sin embargo, dependerá de la situación.
-mc.param_filter('mass_lte', max_lim=4)
+mc.param_filter('mass_lte', max_lim=10)
 
 # GRÁFICAR LOS RESULTADOS
 # =================
@@ -81,7 +81,7 @@ m0_13co = mc.get_n_moment('13CO', n=0)
 # Podemos agregar filtros externos, activando y desactivando, según algún criterio, los bines.
 # Por ejemplo, en este caso, filtraremos según la intensidad del mapa de momento zero
 # Quitaremos del mapa aquellos píxeles con intensidad < 2.5 K km/s
-#m0_thresh = m0_13co['']
+# Pendiente... m0_thresh = m0_13co['']
 
 # Graficamos la distribución espacial de la masa calculada
 sos.map_param(mc.binned, 'mass_lte', m0_13co, cmap='magma', log=False)
