@@ -14,6 +14,8 @@
 #
 # --------------------------------------------------------------------------------- #
 
+import os
+
 import numpy as np
 from matplotlib.pyplot import *
 #ion()
@@ -283,6 +285,8 @@ def map_param(mc, param, Mn, log=True, **kwargs):
     # ----------------------------------------------
     # Figure size
     figsize = kwargs.pop('figsize', (9,9))
+    # Show contours
+    show_contours = kwargs.pop('show_contours', True)
     # Level contours
     level_contours = kwargs.pop('level_contours', 5)
     # Level contours
@@ -293,6 +297,12 @@ def map_param(mc, param, Mn, log=True, **kwargs):
     cmap = kwargs.pop('cmap', 'gist_gray_r')
     # Log contour
     log_contour = kwargs.pop('log_contour', False)
+    # Return figure
+    return_figure = kwargs.pop('return_figure', False)
+    # Name of saved file
+    name = kwargs.pop('name', '')
+    # Save as FITS
+    save = kwargs.pop('save', False)
     # ----------------------------------------------
 
     # Get Parameters
@@ -306,6 +316,7 @@ def map_param(mc, param, Mn, log=True, **kwargs):
 
         # Create figure
         fig = figure(figsize=figsize)
+        subplots_adjust(**kwargs)
 
         # Get header dimensions
         dims_mn = Mn['data'].shape
@@ -345,21 +356,39 @@ def map_param(mc, param, Mn, log=True, **kwargs):
         img = ax.imshow(m_param.T, cmap=cmap, origin='lower')
         fig.colorbar(img, orientation='vertical', label=label)
 
-        # Plot M0 map
-        ins = ax.inset_axes([0.0,0.0,1.0,1.0])
-        ins.patch.set_alpha(0.0)
-        ins.axis('off')
-        ins.set_xticks([])
-        ins.set_yticks([])
-        if log_contour:
-            data = np.log10(Mn['data'])
-        else:
-            data = Mn['data']
-        ins.contour(data.T, colors=color_contours, alpha=alpha_contours,\
-                    levels=level_contours)
+        # Plot M0 map contour
+        if show_contours:
+            ins = ax.inset_axes([0.0,0.0,1.0,1.0])
+            ins.patch.set_alpha(0.0)
+            ins.axis('off')
+            ins.set_xticks([])
+            ins.set_yticks([])
+            if log_contour:
+                data = np.log10(Mn['data'])
+            else:
+                data = Mn['data']
+            ins.contour(data.T, colors=color_contours, alpha=alpha_contours,\
+                        levels=level_contours)
 
-        # SOS logo
-        _add_logo(fig)
+        if return_figure:
+            close(fig)
+            return fig, ax
+        else:
+            # SOS logo
+            _add_logo(fig)
+
+            if save:
+                if name == '':
+                    name_file = 'map_param_'+param
+                else:
+                    name_file = name
+
+                # Create the fits map
+                os.system('rm -rf '+name_file+'.fits')
+                hdu = fits.PrimaryHDU(m_param.T, header=mn_header)
+                hdu.writeto(name_file+'.fits')
+
+                msg('FITS heat map saved', 'ok')
 
 
 def plot_moment(Mn, contour=True, **kwargs):
@@ -713,3 +742,4 @@ def _add_logo(fig):
     newax = fig.add_axes([0.01, 0.85, 0.25, 0.135], anchor='NE', zorder=-1)
     newax.imshow(sos.LOGO_SOS)
     newax.axis('off')
+

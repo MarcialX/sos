@@ -36,6 +36,7 @@ from .mc_db_tools import *
 from .line_fitting import *
 from .init_vals import *
 from .misc.constants import *
+from .visual_tools.param_visual import *
 
 
 class mc(object):
@@ -3673,3 +3674,33 @@ class mc(object):
         T[3] = np.nanstd(self.Dmol[mol][n])
 
         return T
+
+
+    def param_visualiser(self, mol, n=0):
+        """
+            Interactive window to visualise parameters calculated
+            Parameters
+            ----------
+            mol : string
+                Molecule for the moment maps
+            n : int
+                n-Moment 
+            ----------
+        """
+
+        print('Initialising molecular cloud parameters visualiser...')
+
+        # Add canvas to the app
+        ioff()
+        fig, ax = subplots()
+        close(fig)
+
+        # Instance app
+        app = QApplication.instance()
+
+        pm_vis = ParamVisualiser()
+        mn_mol = self.get_n_moment(mol, n=n)
+        pm_vis.load_fits_file(mol, mn_mol, self.binned, self.mcID)
+        pm_vis.show()
+
+        app.exec_()

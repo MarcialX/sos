@@ -31,7 +31,7 @@ class HeaderEditWindow(QWidget):
         Interactive window to fit spectral lines
         Parameters
         ----------
-
+        Not initial params
         ----------
     """
     # Signal to update data

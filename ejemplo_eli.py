@@ -50,7 +50,7 @@ mc.get_gral_params()
 # ===============
 # Segmentamos el mapa en 63x63 bines, la máxima posible para esta imagen, 
 # es decir, igual a la resolución del mapa
-nbins = 63
+nbins = 8
 mc.binning_mol('13CO', nbins=nbins, rebin=True)
 mc.binning_mol('12CO', nbins)
 # Ajustamos una linea a cada espectro. Se define un umbral de detección 'sigma_thresh',

@@ -1,0 +1,579 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>paramVis</class>
+ <widget class="QWidget" name="paramVis">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>969</width>
+    <height>767</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Parameter visualiser</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">background-color: rgb(255, 255, 255);</string>
+  </property>
+  <widget class="QFrame" name="plotFrame">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>55</y>
+     <width>660</width>
+     <height>660</height>
+    </rect>
+   </property>
+   <property name="frameShape">
+    <enum>QFrame::StyledPanel</enum>
+   </property>
+   <property name="frameShadow">
+    <enum>QFrame::Raised</enum>
+   </property>
+   <widget class="QWidget" name="verticalLayoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>10</y>
+      <width>641</width>
+      <height>641</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="mainPlotLayout"/>
+   </widget>
+  </widget>
+  <widget class="QLabel" name="label">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>5</y>
+     <width>122</width>
+     <height>43</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="pixmap">
+    <pixmap>../logo_sos.png</pixmap>
+   </property>
+   <property name="scaledContents">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QLabel" name="nameLabel">
+   <property name="geometry">
+    <rect>
+     <x>150</x>
+     <y>15</y>
+     <width>521</width>
+     <height>27</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>16</pointsize>
+     <weight>75</weight>
+     <bold>true</bold>
+    </font>
+   </property>
+   <property name="text">
+    <string>NOT NAME</string>
+   </property>
+  </widget>
+  <widget class="QFrame" name="plotFrame_2">
+   <property name="geometry">
+    <rect>
+     <x>680</x>
+     <y>574</y>
+     <width>281</width>
+     <height>181</height>
+    </rect>
+   </property>
+   <property name="frameShape">
+    <enum>QFrame::StyledPanel</enum>
+   </property>
+   <property name="frameShadow">
+    <enum>QFrame::Raised</enum>
+   </property>
+   <widget class="QWidget" name="verticalLayoutWidget_2">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>0</y>
+      <width>281</width>
+      <height>181</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="spectraPlotLayout"/>
+   </widget>
+  </widget>
+  <widget class="QFrame" name="plotFrame_3">
+   <property name="geometry">
+    <rect>
+     <x>680</x>
+     <y>10</y>
+     <width>281</width>
+     <height>375</height>
+    </rect>
+   </property>
+   <property name="frameShape">
+    <enum>QFrame::StyledPanel</enum>
+   </property>
+   <property name="frameShadow">
+    <enum>QFrame::Raised</enum>
+   </property>
+   <widget class="QLabel" name="nameLabel_2">
+    <property name="geometry">
+     <rect>
+      <x>5</x>
+      <y>5</y>
+      <width>100</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>12</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>Map Parameter</string>
+    </property>
+   </widget>
+   <widget class="QFrame" name="frame">
+    <property name="geometry">
+     <rect>
+      <x>5</x>
+      <y>25</y>
+      <width>271</width>
+      <height>61</height>
+     </rect>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::StyledPanel</enum>
+    </property>
+    <property name="frameShadow">
+     <enum>QFrame::Raised</enum>
+    </property>
+    <widget class="QComboBox" name="paramsComboBox">
+     <property name="geometry">
+      <rect>
+       <x>124</x>
+       <y>5</y>
+       <width>141</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <item>
+      <property name="text">
+       <string>LTE Mass</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Virial Mass</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>XF Mass</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>H2 Column density</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Magnetic field</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Excitation Temperature</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Volume</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Volume Density</string>
+      </property>
+     </item>
+    </widget>
+    <widget class="QLabel" name="nameLabel_3">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>10</y>
+       <width>111</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+       <weight>50</weight>
+       <bold>false</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>Select Parameter:</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="nameLabel_4">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>35</y>
+       <width>41</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+       <weight>50</weight>
+       <bold>false</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>Color:</string>
+     </property>
+    </widget>
+    <widget class="QComboBox" name="colorBox">
+     <property name="geometry">
+      <rect>
+       <x>50</x>
+       <y>32</y>
+       <width>81</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <item>
+      <property name="text">
+       <string>magma</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Reds</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Blues</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>gist_rainbow</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>viridis</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Greys</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>plasma</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>autumn</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>winter</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Spectral</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>bwr</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>hsv</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>twilight</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>jet</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>nipy_spectral</string>
+      </property>
+     </item>
+    </widget>
+    <widget class="QComboBox" name="scaleBox">
+     <property name="geometry">
+      <rect>
+       <x>183</x>
+       <y>32</y>
+       <width>81</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <item>
+      <property name="text">
+       <string>Lineal</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Logarithmic</string>
+      </property>
+     </item>
+    </widget>
+    <widget class="QLabel" name="nameLabel_6">
+     <property name="geometry">
+      <rect>
+       <x>143</x>
+       <y>35</y>
+       <width>41</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+       <weight>50</weight>
+       <bold>false</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>Scale:</string>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QLabel" name="paramLabel">
+    <property name="geometry">
+     <rect>
+      <x>110</x>
+      <y>5</y>
+      <width>161</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>12</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>NO PARAM SELECTED</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+    </property>
+   </widget>
+   <widget class="QTableView" name="tableHeader">
+    <property name="geometry">
+     <rect>
+      <x>5</x>
+      <y>165</y>
+      <width>270</width>
+      <height>205</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>8</pointsize>
+     </font>
+    </property>
+   </widget>
+   <widget class="QFrame" name="frame_2">
+    <property name="geometry">
+     <rect>
+      <x>5</x>
+      <y>127</y>
+      <width>271</width>
+      <height>34</height>
+     </rect>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::StyledPanel</enum>
+    </property>
+    <property name="frameShadow">
+     <enum>QFrame::Raised</enum>
+    </property>
+    <widget class="QPushButton" name="flag_editButton">
+     <property name="geometry">
+      <rect>
+       <x>5</x>
+       <y>5</y>
+       <width>260</width>
+       <height>24</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true"/>
+     </property>
+     <property name="text">
+      <string>Flag Bin Edit</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QFrame" name="frame_3">
+    <property name="geometry">
+     <rect>
+      <x>5</x>
+      <y>90</y>
+      <width>271</width>
+      <height>34</height>
+     </rect>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::StyledPanel</enum>
+    </property>
+    <property name="frameShadow">
+     <enum>QFrame::Raised</enum>
+    </property>
+    <widget class="QCheckBox" name="contoursBox">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>6</y>
+       <width>111</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Show Contours?</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+    </widget>
+    <widget class="QLabel" name="nameLabel_5">
+     <property name="geometry">
+      <rect>
+       <x>150</x>
+       <y>8</y>
+       <width>61</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+       <weight>50</weight>
+       <bold>false</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>Levels:</string>
+     </property>
+    </widget>
+    <widget class="QSpinBox" name="levelsBox">
+     <property name="geometry">
+      <rect>
+       <x>200</x>
+       <y>5</y>
+       <width>44</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="minimum">
+      <number>1</number>
+     </property>
+     <property name="maximum">
+      <number>30</number>
+     </property>
+     <property name="value">
+      <number>5</number>
+     </property>
+    </widget>
+   </widget>
+  </widget>
+  <widget class="QFrame" name="plotFrame_4">
+   <property name="geometry">
+    <rect>
+     <x>680</x>
+     <y>390</y>
+     <width>281</width>
+     <height>181</height>
+    </rect>
+   </property>
+   <property name="frameShape">
+    <enum>QFrame::StyledPanel</enum>
+   </property>
+   <property name="frameShadow">
+    <enum>QFrame::Raised</enum>
+   </property>
+   <widget class="QWidget" name="verticalLayoutWidget_3">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>0</y>
+      <width>281</width>
+      <height>181</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="histPlotLayout"/>
+   </widget>
+  </widget>
+  <widget class="QLabel" name="statsLabel">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>725</y>
+     <width>661</width>
+     <height>27</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>12</pointsize>
+     <weight>75</weight>
+     <bold>true</bold>
+    </font>
+   </property>
+   <property name="text">
+    <string>NOT STATISTICS AVAILABLE</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
