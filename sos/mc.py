@@ -3520,9 +3520,7 @@ class mc(object):
         if not name:
             now = datetime.now()
             current_time = now.strftime("%d%m%y_%H%M%S")
-            name = './sos/bkp/'+self.mcID+'_'+current_time+'_bkp'
-        else:
-            name = './sos/bkp/'+name
+            name = './'+self.mcID+'_'+current_time+'_bkp'
 
         os.mkdir(name)
 
