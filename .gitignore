@@ -1,6 +1,7 @@
 data_cube/
 data_specs/
 img_results/
+3Orion_8x8_bkp/
 
 *.fits
 *.txt
