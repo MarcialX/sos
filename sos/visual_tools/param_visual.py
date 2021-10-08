@@ -57,6 +57,7 @@ class ParamVisualiser(QWidget):
         # Get initial param to plot
         self.param = 'mass_lte'
         self.paramsComboBox.currentTextChanged.connect(self.on_param_changed)
+        self.paramLabel.setText('LTE Mass')
 
         self.color = 'magma'
         self.colorBox.currentTextChanged.connect(self.on_color_changed)
@@ -139,6 +140,8 @@ class ParamVisualiser(QWidget):
         # Get current param selected
         param = self.paramsComboBox.currentText()
         self.param = self.GRAL_PARAMS[param]
+
+        self.paramLabel.setText(param)
 
         # Update main graph
         self.update_main_plot()
