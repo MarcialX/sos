@@ -411,8 +411,8 @@ class ParamVisualiser(QWidget):
 
         self.spectraPlotLayout.removeWidget(self.canvas_spec)
         self.canvas_spec.close()
-        self.spectraPlotLayout.removeWidget(self.toolbar_spec)
-        self.toolbar_spec.close()
+        #self.spectraPlotLayout.removeWidget(self.toolbar_spec)
+        #self.toolbar_spec.close()
 
 
     def _addmpl_main(self, fig):
@@ -431,3 +431,19 @@ class ParamVisualiser(QWidget):
         self.canvas_main.close()
         self.mainPlotLayout.removeWidget(self.toolbar_main)
         self.toolbar_main.close()
+
+
+    def closeEvent(self, event):
+
+        self.fig.canvas.mpl_disconnect(self._onclick_xy)
+        self.fig.canvas.mpl_disconnect(self._hover_event)
+        
+        self._rmmpl_spectra()
+        self._rmmpl_main()
+        self._rmmpl_hist()
+
+        close(self.fig_spectra)
+        close(self.fig_hist)
+        close(self.fig)
+
+        #event.accept()

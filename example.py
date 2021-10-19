@@ -37,15 +37,15 @@ mc.get_gral_params()
 # BINNING THE MAP
 # ===============
 # Binning the map of molecule '13CO' and '12CO', dividing the map in 32x32 bins
-mc.binning_mol('13CO', nbins=41, rebin=True)
-mc.binning_mol('12CO', 41)
+mc.binning_mol('13CO', nbins=80, rebin=True)
+mc.binning_mol('12CO', 80)
 # Fit the line of each bin
 mc.line_fit_binning('13CO', forced_lines=1)
 mc.line_fit_binning('12CO', forced_lines=1)
 # Get physical parameters of each bin
 mc.get_bins_params()
 # Filter mass errors calculations
-mc.param_filter('mass_lte', max=1e4)
+#mc.param_filter('mass_lte', max_lim=1e4)
 
 # PLOT MASS RESULTS
 # =================

@@ -875,7 +875,7 @@ class mc(object):
         if (xlim > 1 and xlim < 2) or (ylim > 1 and ylim < 2):
             msg('Binning number not valid. It will create bins of zero dimension.',\
             'fail')
-            max_bin = np.max((x, y))
+            max_bin = np.min((x, y))
             msg('Choose a bin number between 2-'+str(round(max_bin/2))+' or the maximum binning: '+str(max_bin), 'info')
             return
 
@@ -2246,7 +2246,7 @@ class mc(object):
         if (xlim > 1 and xlim < 2) or (ylim > 1 and ylim < 2):
             msg('Binning number not valid. It will create bins of zero dimension.',\
             'fail')
-            max_bin = np.max((x, y))
+            max_bin = np.min((x, y))
             msg('Choose a bin number between 2-'+str(round(max_bin/2))+' or the maximum binning: '+str(max_bin), 'info')
             return
 
