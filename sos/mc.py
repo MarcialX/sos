@@ -37,6 +37,7 @@ from .line_fitting import *
 from .init_vals import *
 from .misc.constants import *
 from .visual_tools.param_visual import *
+from .img_tools import *
 
 
 class mc(object):
