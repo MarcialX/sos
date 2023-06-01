@@ -20,6 +20,8 @@ It includes:
 - Python 3.6 or later
 - Astropy >= 4.0
 - Scipy >= 1.5.1
+- PyQt5 >= 5.12.2
+- Matplotlib >= 3.6
 
 ## Install
 

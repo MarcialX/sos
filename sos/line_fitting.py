@@ -39,7 +39,7 @@ from scipy.integrate import simps
 
 from datetime import datetime
 
-from matplotlib.backends.backend_qt4agg import(
+from matplotlib.backends.backend_qt5agg import(
     FigureCanvasQTAgg as FigureCanvas,
     NavigationToolbar2QT as NavigationToolbar)
 

@@ -65,10 +65,12 @@ mc.get_bins_params()
 # Polarization analysis
 # =====================
 # Load polarization map in the following path
-path_pol = '/home/marcial/Documentos/sos/data_cube/new_polaris_detector_nr0003.fits'
+#path_pol = '/home/marcial/Documentos/sos/data_cube/new_polaris_detector_nr0003.fits'
+path_pol = '/home/marcial/Descargas/polaris_detector_nr0003.fits'
+
 # As the image is rotated, we rotate 180° the image with 2 rotations of 90° (r) and then
 # transpose the array (t)
-mc.load_polarization(path_pol, move_cmd='r-r-t')
+mc.load_polarization(path_pol, rotate=90, move_cmd='r-r-t')
 # Get polarization vectors
 mc.get_pol_params()
 # Apply binning
@@ -78,7 +80,7 @@ mc.binning_pol(nbins=bins, rebin=False)
 for bin in mc.binned.keys():
 	mc.binned[bin]['B'] = 1/mc.binned[bin]['pol_angle_std']
 
-N = mc.build_data_header('B', 'binned')
+N = mc.build_data_header('N', 'full')
 
 # Polarization vector (one vector each 4 pixels) and column density[N]
 sos.plot_pol_vectors(mc.full['pol_vector'], N, step=4, log=True, level_contours=3)

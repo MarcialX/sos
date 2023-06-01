@@ -163,6 +163,9 @@ class mc(object):
         self.full['pol_degree'] = []
         self.full['pol_vector'] = []
 
+        # Additional rotatio to polarization vector
+        self.pol_vec_rotate = 0.
+
         # MC center
         self.xc, self.yc = 0., 0.
 
@@ -346,12 +349,12 @@ class mc(object):
             # Axis names [Polarimetry]
             ax_names = { 'x': ['ra-', 'lon', 'x'],
                          'y': ['dec-', 'lat', 'y'],
-                         'pol': ['stoke', 'pol']
+                         'pol': ['stoke', 'pol', 'i', 'q', 'u', 'v']
             }
             h_fields_pol = ['CTYPE', 'CUNIT', 'NAXIS']
 
         ndim = 3
-        new_shape = [0]*ndim
+        new_shape = [1]*ndim
 
         for i, k in enumerate(ax_names.keys()):
             # Check each of the axis
@@ -379,6 +382,38 @@ class mc(object):
                     break
 
         new_shape = new_shape[::-1]
+
+        # Validate dimensions
+        # Just in case of header is bad configured.
+        # ---------------------------------------------------------
+        aux_n = 1
+        for n in new_shape:
+            aux_n *= n
+
+        if not aux_n == data.size:
+            # Just delete the ones
+            new_shape = []
+            dnaxis = n_header['NAXIS*']
+            i = len(dnaxis)
+            for d in dims:
+                if d > 1:
+                    new_shape.append(d)
+                    # Add header
+                    flag = False
+                    for n in dnaxis:
+                        if n_header[n] == d:
+                            del dnaxis[n]
+                            flag = False
+                            break
+                        else:
+                            flag = True
+
+                    if flag:
+                        i += 1 
+                        n_header['NAXIS'+str(i)] = d
+                        n_header['CTYPE'+str(i)] = 'Default param'
+                        n_header['CUNIT'+str(i)] = 'Default unit'
+        # ---------------------------------------------------------
 
         if len(dims) > 3:
             aux_shape = list(dims)
@@ -607,6 +642,13 @@ class mc(object):
         self.Hmol[mol]['CRVAL2'] = lat_lims[0]
         self.full[mol]['units']['lat'] = hdr_default['CUNIT2']
 
+        # Get line transition
+        if 'LINE' in self.Hmol[mol]:
+            self.full[mol]['t_line'] = self.Hmol[mol]['LINE'].replace(mol, '')
+        else:
+            # In case the line is not defined, the transition J=1-0 is taken as the default
+            self.full[mol]['t_line'] = '1-0'
+
         # Centroid
         self.xc, self.yc = 0, 0
 
@@ -625,9 +667,13 @@ class mc(object):
 
         # Key arguments
         # ----------------------------------------------
-        # Figure size
+        # Rotation command
         move_cmd = kwargs.pop('move_cmd', None)
+        # Additional rotation to vectors
+        rotate = kwargs.pop('rotate', 0)
         # ----------------------------------------------
+
+        self.pol_vec_rotate = rotate
 
         # Load polarization data
         msg('Loading Polarization map', 'info')
@@ -800,6 +846,8 @@ class mc(object):
 
             # Get polarization angle and degree
             pol_degree, pol_angle = get_pol_params_from_stokes(stokes['I'], stokes['Q'], stokes['U'])
+            # Additional rotation
+            pol_angle = pol_angle + self.pol_vec_rotate*np.pi/180.0
             # Get polarization vectors
             pol_vector = pol_degree*np.cos(pol_angle) + 1j*pol_degree*np.sin(pol_angle)
 
@@ -848,7 +896,7 @@ class mc(object):
 
     def binning_pol(self, nbins, rebin, *args, **kwargs):
         """
-            Binning polaritzation
+            Binning polarization
             Parameters
             ----------
             nbins : int
@@ -993,6 +1041,7 @@ class mc(object):
 
                     # Basic stadistic of polarizated data
                     pol_angle_data = np.concatenate((pol_angle.flatten(), frame_pol_angle))
+                    pol_angle_data = pol_angle_data + self.pol_vec_rotate*np.pi/180.0
                     pol_degree_data = np.concatenate((pol_degree.flatten(), frame_pol_degree))
                     # Polarization Angle
                     self.binned[name]['pol_angle_mean'] = np.mean(pol_angle_data) 
